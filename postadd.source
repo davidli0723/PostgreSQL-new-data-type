@@ -1,0 +1,124 @@
+CREATE FUNCTION postadd_in(cstring)
+   RETURNS PostAddress
+   AS '_OBJWD_/postadd'
+   LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION postadd_out(PostAddress)
+   RETURNS cstring
+   AS '_OBJWD_/postadd'
+   LANGUAGE C IMMUTABLE STRICT;
+
+CREATE TYPE PostAddress (
+   internallength = VARIABLE,
+   input = postadd_in,
+   output = postadd_out
+);
+
+CREATE FUNCTION show_postcode(PostAddress)
+   RETURNS text
+   AS '_OBJWD_/postadd'
+   LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION show_unit(PostAddress)
+   RETURNS text
+   AS '_OBJWD_/postadd'
+   LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION show(PostAddress)
+   RETURNS text
+   AS '_OBJWD_/postadd'
+   LANGUAGE C IMMUTABLE STRICT;
+
+-----------------------------
+-- Interfacing New Types with Indexes:
+--	We cannot define a secondary index (eg. a B-tree) over the new type
+--	yet. We need to create all the required operators and support
+--      functions, then we can make the operator class.
+-----------------------------
+
+-- first, define the required operators
+CREATE FUNCTION postaddress_abs_lt(PostAddress, PostAddress) RETURNS bool
+   AS '_OBJWD_/postadd' LANGUAGE C IMMUTABLE STRICT;
+CREATE FUNCTION postaddress_abs_le(PostAddress, PostAddress) RETURNS bool
+   AS '_OBJWD_/postadd' LANGUAGE C IMMUTABLE STRICT;
+CREATE FUNCTION postaddress_abs_eq(PostAddress, PostAddress) RETURNS bool
+   AS '_OBJWD_/postadd' LANGUAGE C IMMUTABLE STRICT;
+CREATE FUNCTION postaddress_abs_ne(PostAddress, PostAddress) RETURNS bool
+   AS '_OBJWD_/postadd' LANGUAGE C IMMUTABLE STRICT;
+CREATE FUNCTION postaddress_abs_ge(PostAddress, PostAddress) RETURNS bool
+   AS '_OBJWD_/postadd' LANGUAGE C IMMUTABLE STRICT;
+CREATE FUNCTION postaddress_abs_gt(PostAddress, PostAddress) RETURNS bool
+   AS '_OBJWD_/postadd' LANGUAGE C IMMUTABLE STRICT;
+CREATE FUNCTION postaddress_abs_ti(PostAddress, PostAddress) RETURNS bool
+   AS '_OBJWD_/postadd' LANGUAGE C IMMUTABLE STRICT;
+CREATE FUNCTION postaddress_abs_nt(PostAddress, PostAddress) RETURNS bool
+   AS '_OBJWD_/postadd' LANGUAGE C IMMUTABLE STRICT;
+
+
+CREATE OPERATOR < (
+   leftarg = PostAddress, rightarg = PostAddress, procedure = postaddress_abs_lt,
+   commutator = > , negator = >= ,
+   restrict = scalarltsel, join = scalarltjoinsel
+);
+CREATE OPERATOR <= (
+   leftarg = PostAddress, rightarg = PostAddress, procedure = postaddress_abs_le,
+   commutator = >= , negator = > ,
+   restrict = scalarlesel, join = scalarlejoinsel
+);
+CREATE OPERATOR = (
+   leftarg = PostAddress, rightarg = PostAddress, procedure = postaddress_abs_eq,
+   commutator = = ,
+   negator = <> ,
+   restrict = eqsel, join = eqjoinsel
+);
+CREATE OPERATOR <> (
+   leftarg = PostAddress, rightarg = PostAddress, procedure = postaddress_abs_ne,
+   commutator = <> ,
+   negator = = ,
+   restrict = neqsel, join = neqjoinsel
+);
+CREATE OPERATOR >= (
+   leftarg = PostAddress, rightarg = PostAddress, procedure = postaddress_abs_ge,
+   commutator = <= , negator = < ,
+   restrict = scalargesel, join = scalargejoinsel
+);
+CREATE OPERATOR > (
+   leftarg = PostAddress, rightarg = PostAddress, procedure = postaddress_abs_gt,
+   commutator = < , negator = <= ,
+   restrict = scalargtsel, join = scalargtjoinsel
+);
+CREATE OPERATOR ~ (
+   leftarg = PostAddress, rightarg = PostAddress, procedure = postaddress_abs_ti,
+   commutator = ~ , negator = !~ ,
+   restrict = eqsel, join = eqjoinsel
+);
+CREATE OPERATOR !~ (
+   leftarg = PostAddress, rightarg = PostAddress, procedure = postaddress_abs_nt,
+   commutator = !~ , negator = ~ ,
+   restrict = neqsel, join = neqjoinsel
+);
+
+
+-- create the support function too
+CREATE FUNCTION postaddress_abs_cmp(PostAddress, PostAddress) RETURNS int4
+   AS '_OBJWD_/postadd' LANGUAGE C IMMUTABLE STRICT;
+
+-- now we can make the operator class
+CREATE OPERATOR CLASS postaddress_abs_ops
+    DEFAULT FOR TYPE PostAddress USING btree AS
+        OPERATOR        1       < ,
+        OPERATOR        2       <= ,
+        OPERATOR        3       = ,
+        OPERATOR        4       >= ,
+        OPERATOR        5       > ,
+        FUNCTION        1       postaddress_abs_cmp(PostAddress, PostAddress);
+
+
+CREATE FUNCTION postaddress_hash(PostAddress) RETURNS int4
+   AS '_OBJWD_/postadd' LANGUAGE C IMMUTABLE STRICT;
+
+CREATE OPERATOR CLASS postaddress_ops
+   DEFAULT FOR TYPE PostAddress USING hash AS
+	OPERATOR	1	= ,
+	FUNCTION	1	postaddress_hash(PostAddress);
+
